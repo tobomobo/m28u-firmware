@@ -16,7 +16,9 @@ The electrical identification of that input is unconfirmed.
 The new harness executes those instructions, the main event dispatcher, original
 bank gateways, actual mode/per-port getters, KVM binding selection, timer cancel
 and timer enqueue/rebase. It retains the scanned event across a controlled
-main-loop call boundary. Source-request delivery and USB-mux calls are stubs.
+main-loop call boundary. Most gate cases stub source requests and USB routing;
+the deeper cases below execute their bookkeeping and routing orchestration,
+intercepting the lower-level transport and named follow-up calls.
 This establishes a software gate, not the state reached by a physical press.
 
 The candidate starts from the existing standby+SDR image. A three-byte jump at
@@ -50,13 +52,13 @@ python3 tools/build_kvm_experiment.py artifacts/kvm-candidate
 ```
 
 The output directory must be new. `make test-kvm` never builds or opens a live
-transport. It runs 158,315 bounded cases per image against stock, standby, SDR
+transport. It runs 161,771 bounded cases per image against stock, standby, SDR
 and the candidate. Coverage includes every 16-bit screen word, every enable-byte
 and layout-byte combination, 18,432 binding/pending-message cases, scanner/debounce cases and 72
 timer-handoff cases including wrap boundaries and a full timer table with and
 without standby entries. Another 63 cases test each of the 21 slots as the sole
 free/stage6/stage7 capacity. Stock fails
-the proposed no-signal-switch assertion; the candidate passes. Eight deliberately
+the proposed no-signal-switch assertion; the candidate passes. Twelve deliberately
 broken variants must fail. Optimized and ASan/UBSan runs passed; no monitor was contacted.
 
 The final `make check` run passed 134 of 135 tests, with one expected skip for
@@ -72,6 +74,47 @@ was 114 in both images; this is not an interrupt-stack or whole-program proof.
 The pre-existing standby and SDR images produce identical results to stock in
 this bounded KVM test, so it supplies no evidence that those patches caused the
 original issue.
+
+## Source and USB handoff follow-up
+
+Another 1,920 cases execute the original source request (`04:ea2f`), source
+assignment (`04:eed8`), source-map lookup/getter and USB routing (`14:7743`).
+They cover both directions with the owner's binding byte `0x12`, all 24
+permutations of a synthetic four-input map, both values of `D151.bit0` and
+`FE2C`, both previous USB routes, and success/failure at each of the two
+transport writes and two completion polls. These synthetic tables are not a
+capture of the monitor's runtime table.
+
+The tests assert the requested source and its getter result, cleared per-port
+state, preserved old-source snapshot, exact route-register writes, transport
+arguments/payloads, early-return behaviour and standby handoff. In the candidate,
+480 cases take the stock already-routed early return; 288 complete both writes
+and polls. The other 1,152 stop at an injected transport failure. No traffic is
+sent to a monitor.
+
+The selector's carry result means **a source request was made**. The original
+helpers set carry after the USB routine even if that routine failed; the patch
+does not turn that result into a hardware acknowledgement or add retries.
+
+Another 1,536 cases enter the stock conditional fallback branch at `13:8adf`
+after its external signal/status test. All four images produce the same result:
+256 post a request for the saved previous source, 256 call the automatic-search
+follow-up, and the rest do neither. The direct return-to-previous-source branch
+at `13:8b0b` does not itself call USB routing. Later processing may still do so;
+this does not prove that picture and peripherals recover together.
+
+The deeper tests intercept source cleanup (`04:c9a3`), automatic search
+(`04:febb`), source follow-ups (`28c1`, `28cd`, `28d3`, `1325`), transport writes
+(`043a`) and completion polls (`2e97`). They do not execute a complete monitor
+main loop or generate the external status event that reaches fallback. Four
+additional mutations drop source assignment, drop a route-register write,
+ignore a route error, or misaddress the fallback snapshot; each must fail.
+
+This follow-up does not change the candidate bytes, builder or writer. It
+reduces the earlier stub boundary; it does not establish physical acceptance.
+The optimized and ASan/UBSan reports agree on all four runs and record matching
+source hashes. A separate `autoreview --mode local` of this three-file test
+extension returned no actionable findings.
 
 ## Before a flash decision
 

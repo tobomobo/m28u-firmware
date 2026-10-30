@@ -14,7 +14,8 @@ from tools.build_kvm_experiment import HOOK, STUB, build, stub_bytes
 
 COUNTS = {"scanner_cases": 32, "gate_cases": 8640, "timer_handoff_cases": 72, "timer_capacity_cases": 63,
           "binding_cases": 18432, "scanner_dispatch_chain_cases": 4,
-          "screen_word_cases": 65536, "enable_layout_cases": 65536}
+          "screen_word_cases": 65536, "enable_layout_cases": 65536,
+          "source_route_cases": 1920, "fallback_cases": 1536}
 
 
 def validate(harness, stock):
@@ -35,6 +36,10 @@ def validate(harness, stock):
                 report.get("original_bank_gateways_executed") is not True or
                 report.get("no_signal_switched") != expected_switches or
                 report.get("no_signal_blocked") != 6 - expected_switches or
+                report.get("route_early_returns") != (480 if name == "kvm" else 0) or
+                report.get("route_completions") != (288 if name == "kvm" else 0) or
+                report.get("fallback_requests") != 256 or report.get("fallback_searches") != 256 or
+                report.get("route_transport_stubbed") is not True or
                 report.get("candidate_expected") != (name == "kvm")):
             raise ValueError(f"Unexpected {name} harness result")
         results[name] = report
@@ -53,7 +58,11 @@ def validate(harness, stock):
                   bytes((2, 255, stub.index(bytes.fromhex("12 33 71"))))),
                  ("wrong standby delay", STUB + stub.index(bytes.fromhex("7f 60 7e ea")) + 1, b"\x61"),
                  ("cancelled wrong first timer", STUB + stub.index(bytes.fromhex("7f 06 12 2b f1")) + 1, b"\x05"),
-                 ("cancelled wrong final timer", STUB + stub.index(bytes.fromhex("7f 07 12 2b f1")) + 1, b"\x05")]
+                 ("cancelled wrong final timer", STUB + stub.index(bytes.fromhex("7f 07 12 2b f1")) + 1, b"\x05"),
+                 ("source assignment dropped", 0x04eef6, b"\x00"),
+                 ("route GPIO write dropped", 0x14775a, b"\x00"),
+                 ("route error ignored", 0x1477fb, b"\x80"),
+                 ("fallback snapshot address wrong", 0x138b12, b"\x00")]
     detected = []
     for name, offset, replacement in mutations:
         broken = bytearray(candidate)
@@ -73,7 +82,9 @@ def validate(harness, stock):
             "runs": results, "stock_desired_behaviour_check_failed": True,
             "detected_mutations": detected,
             "limits": ["FE37 electrical button attribution and live state/event not measured",
-                       "Source requests and USB mux calls are intercepted, not hardware validated",
+                       "Deep cases execute source bookkeeping and USB route orchestration, with transport ACK/poll results injected",
+                       "Source cleanup, automatic-search and display follow-up calls remain intercepted",
+                       "Fallback cases enter a conditional branch after the external signal/status check; they do not model its delivery",
                        "Key scanning and dispatch share state across a controlled main-loop boundary",
                        "No interrupts, asynchronous signal changes or full fallback engine modeled",
                        "Timer enqueue/cancel/rebase instructions execute; timer delivery remains outside scope"]}
