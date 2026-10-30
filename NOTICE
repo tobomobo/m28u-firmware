@@ -1,0 +1,13 @@
+Third-party firmware and names
+
+Gigabyte M28U firmware and vendor updater software remain the property of
+Gigabyte and their respective rights holders. They are not distributed here
+and are not licensed under this project's MIT licence. Users obtain official
+firmware from Gigabyte and generate modified images locally. This project
+does not grant permission to redistribute those original or modified images.
+
+GIGABYTE and M28U names identify the supported product. This independent
+project is not affiliated with, endorsed by or supported by Gigabyte.
+
+Bundled emu8051 sources are MIT-licensed by Jari Komppa; their original
+copyright and licence notices are retained in analysis/vendor/emu8051/.

@@ -38,7 +38,8 @@ make check                         # builds workers and runs offline tests
 python3 -m m28u_toolkit --help
 ```
 
-Obtain F11 from [Gigabyte support](https://www.gigabyte.com/Monitor/M28U/support#support-dl-firmware).
+Obtain F11 from [Gigabyte support](https://www.gigabyte.com/Monitor/M28U/support#support-dl-firmware)
+or the [official F11 archive](https://download.gigabyte.com/FileList/Firmware/GIGABYTE_M28U_F11.zip).
 Put the extracted file at `firmware/original/GIGABYTE_M28U_F11.bin`.
 Its required SHA-256 is:
 
@@ -57,7 +58,7 @@ Create `artifacts/` first; each output directory must be new. Commands above
 never contact hardware. Optional firmware/native tests are skipped when their
 inputs are absent; test success alone does not establish hardware compatibility.
 
-[Findings and evidence](docs/findings.md) · [Device workflow and reproduction](docs/usage.md)
+[Findings and evidence](docs/findings.md) · [Device workflow and reproduction](docs/usage.md) · [Making other patches](docs/development.md)
 
 ## Layout and licence
 
@@ -69,4 +70,6 @@ Project code: MIT, copyright 2026 tobomobo. The included
 [emu8051](https://github.com/jarikomppa/emu8051) sources retain Jari Komppa's
 MIT notices; source URLs and hashes are in
 [`analysis/vendor/emu8051/sources.json`](analysis/vendor/emu8051/sources.json).
-Vendor firmware is not covered by this project's licence. Unaffiliated with Gigabyte.
+Gigabyte firmware remains proprietary to Gigabyte and its respective rights
+holders; the MIT licence does not apply to it. Users obtain it directly from
+Gigabyte and apply patches locally. See [NOTICE](NOTICE).
