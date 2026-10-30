@@ -1,0 +1,15 @@
+.DS_Store
+.venv/
+__pycache__/
+*.py[cod]
+firmware/
+artifacts/
+build/
+analysis/*
+!analysis/vendor/
+analysis/vendor/*
+!analysis/vendor/emu8051/
+tools/m28u_probe_macos
+tools/m28u_scaler_macos
+tools/m28u_flash_macos
+tools/timer_scheduler_harness

@@ -1,7 +1,7 @@
 """Build an offline-only F11 SDR gain experiment; never opens a transport.
 
 540 is a control cap, NOT a measured nit target or certified safe setting.
-The existing writer's accepted target policy is deliberately unchanged.
+The separate writer accepts only the pinned result; this builder certifies no device.
 """
 import argparse
 import hashlib
@@ -93,13 +93,12 @@ def build(stock):
         "cap_rationale": "540/405 is4/3, a research starting point assuming300-nit stock and a linear response; neither assumption is a measurement",
         "colour_pipeline_code_modified": False,
         "hardware_access": False, "ready_to_flash": False,
-        "writer_policy_modified": False,
+        "writer_target": "Exact pinned cap540 image only; see writer --help",
         "pending": ["Physical chip and mode attribution",
-                    "Injected code and bank behavior on real hardware",
                     "Continuous electrical and thermal operating envelope",
                     "Luminance, black level, white balance, gamma and clipping measurements",
                     "MonitorControl/OSD brightness, HDR and KVM acceptance",
-                    "Deliberate writer-policy update and review before any possible flash"],
+                    "Device-specific acceptance beyond the one-device result in docs/findings.md"],
     }
     return candidate, report
 

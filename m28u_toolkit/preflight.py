@@ -72,7 +72,7 @@ def sector_plan(first, second, stock):
             "An intact AA55 marker is not proof of valid executing firmware",
             "Write protection and board-specific programming path are unverified",
             "Timer wall-clock behavior and USB retention have not been exercised",
-            "Experimental writer has not passed real-device programming acceptance"],
+            "One-device programming result is documented in docs/findings.md; failed-boot recovery remains unproven"],
     }
     return original, candidate, report
 

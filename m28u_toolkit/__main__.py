@@ -140,8 +140,8 @@ def main(argv=None):
                   "blockers": ["This generic readiness response does not load or validate saved hardware evidence",
                                "Complete nonvolatile memory coverage not established",
                                "No complete device backup or independently verified recovery path",
-                               "Standby candidate lacks hardware validation; USB retention unproven",
-                               "Experimental writer has not passed real-device programming acceptance"],
+                               "Longer standby observed on one device; exact timing and USB retention unproven",
+                               "One-device programming result is documented in docs/findings.md; failed-boot recovery remains unproven"],
                   "next_step": "Use preflight with two complete captures for an offline sector plan; establish boot mapping and physical recovery separately."})
             return 0 if args.command == "readiness" else 3
         return 0

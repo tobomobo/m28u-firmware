@@ -1,1 +1,1 @@
-"""M28U status and experimental read-only SPI research; no flash program/erase."""
+"""M28U firmware research, offline patch builders and an explicit experimental writer."""
