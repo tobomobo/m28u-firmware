@@ -1,0 +1,26 @@
+[
+  {
+    "file": "emu8051.h",
+    "url": "https://raw.githubusercontent.com/jarikomppa/emu8051/master/emu8051.h",
+    "sha256": "3cf6f070b8cd51791aeb2555dcfdcb75220b3931f1617c7e2a6148c0628a7a63",
+    "bytes": 7932
+  },
+  {
+    "file": "core.c",
+    "url": "https://raw.githubusercontent.com/jarikomppa/emu8051/master/core.c",
+    "sha256": "8f11018c38f6bdd5754cb9cb420d9ed3f07c3c4c71e18c68a37965e544c432d6",
+    "bytes": 16789
+  },
+  {
+    "file": "opcodes.c",
+    "url": "https://raw.githubusercontent.com/jarikomppa/emu8051/master/opcodes.c",
+    "sha256": "76e33619b88d60042f5275f62af6599a2b5495186d43ad18be477543b2f34263",
+    "bytes": 49387
+  },
+  {
+    "file": "disasm.c",
+    "url": "https://raw.githubusercontent.com/jarikomppa/emu8051/master/disasm.c",
+    "sha256": "0ea5dddc11310d8f1fcff475ff3e3f177ce8b0163b71444c2b937ad55021601e",
+    "bytes": 33045
+  }
+]
