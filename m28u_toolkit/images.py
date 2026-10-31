@@ -16,6 +16,10 @@ MAX_CAPTURE_SIZE = 32 * 1024 * 1024
 # establish identity only; they do not establish electrical or thermal safety.
 SDR_CAP540_SHA256 = "abe1e110fcb0feed0aa47841b55c23540d49b24117441eb1f302089257430204"
 SDR_CAP540_BANK20_SHA256 = "994a4f137178bc0923e52ae8240e09fde3c62532f002c5d1c73b9f2117462df0"
+KVM_COORDINATED_SHA256 = "be7c06f2399f57060f86e53828c6ee079141551ea48b1e2f982f8465689cc5ef"
+KVM_COORDINATED_BANK19_SHA256 = "c35a753e92ef281387106b363ea57a75bcee867426812cbdd4b6f5c31467101c"
+OSD_NO_SIGNAL_SHA256 = "35cc2389ad919154fa12b31ebc70711b2e8184aeee03c06fc4f212b05923ebad"
+OSD_NO_SIGNAL_BANK19_SHA256 = "44a4eedff3625361e147208b5f86508db488d7d456e1efec0609c1b0abe7ac29"
 
 
 def read_exact_file(path, expected_bytes):
@@ -118,6 +122,36 @@ def read_sdr_cap540(path, stock):
             target[0x150000:] != standby[0x150000:] or
             sha256(target[0x140000:0x150000]) != SDR_CAP540_BANK20_SHA256):
         raise ValueError("SDR cap540 bank boundaries do not match the pinned target")
+    return target
+
+
+def read_kvm_coordinated(path, stock):
+    """Accept only the reviewed coordinated KVM target, including SDR/standby."""
+    if identify_stock(stock)[0] != "F11":
+        raise ValueError("Coordinated KVM requires exact stock F11")
+    target = read_exact_file(path, IMAGE_SIZE)
+    if sha256(target) != KVM_COORDINATED_SHA256:
+        raise ValueError("Coordinated KVM image does not match the pinned research SHA-256")
+    standby = make_candidate(stock)[0]
+    if (target[:0x130000] != standby[:0x130000] or
+            target[0x150000:] != standby[0x150000:] or
+            sha256(target[0x130000:0x140000]) != KVM_COORDINATED_BANK19_SHA256 or
+            sha256(target[0x140000:0x150000]) != SDR_CAP540_BANK20_SHA256):
+        raise ValueError("Coordinated KVM bank boundaries do not match the pinned target")
+    return target
+
+
+def read_osd_no_signal(path, stock):
+    """Only this exact OSD + coordinated KVM + SDR + standby research image."""
+    if identify_stock(stock)[0] != "F11":
+        raise ValueError("No-signal OSD requires exact stock F11")
+    target = read_exact_file(path, IMAGE_SIZE)
+    if sha256(target) != OSD_NO_SIGNAL_SHA256:
+        raise ValueError("No-signal OSD image does not match the pinned research SHA-256")
+    if (target[:0x130000] != stock[:0x130000] or target[0x150000:] != stock[0x150000:] or
+            sha256(target[0x130000:0x140000]) != OSD_NO_SIGNAL_BANK19_SHA256 or
+            sha256(target[0x140000:0x150000]) != SDR_CAP540_BANK20_SHA256):
+        raise ValueError("No-signal OSD bank boundaries do not match the pinned target")
     return target
 
 

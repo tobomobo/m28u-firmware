@@ -68,6 +68,10 @@ def main(argv=None):
     target.add_argument("--stock-only", action="store_true", help="Write stock F11 rather than the two-byte candidate")
     target.add_argument("--sdr-cap540", type=Path, metavar="PINNED_IMAGE",
                         help="Select the exact unvalidated SDR cap540 research image; never an arbitrary firmware file")
+    target.add_argument("--kvm-coordinated", type=Path, metavar="PINNED_IMAGE",
+                        help="Select only the pinned coordinated KVM+SDR+standby research image")
+    target.add_argument("--osd-no-signal", type=Path, metavar="PINNED_IMAGE",
+                        help="Select only the pinned no-signal OSD+KVM+SDR+standby research image")
     writer.add_argument("--device")
     sub.add_parser("flash", help="Legacy command always refuses; the explicit writer workflow is separate")
     args = parser.parse_args(argv)
@@ -124,7 +128,8 @@ def main(argv=None):
             from .writer import run
             emit(run(args.first, args.second, args.stock, args.output_directory,
                      live=args.live, program=args.program, candidate=not args.stock_only,
-                     sdr_cap540=args.sdr_cap540,
+                     sdr_cap540=args.sdr_cap540, kvm_coordinated=args.kvm_coordinated,
+                     osd_no_signal=args.osd_no_signal,
                      device=args.device, progress=lambda s: print(s, file=sys.stderr, flush=True)))
         elif args.command == "backup" and args.live and args.enter_isp and args.output_directory is not None:
             from .backup import run_backup

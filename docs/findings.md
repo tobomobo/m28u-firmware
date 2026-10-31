@@ -141,3 +141,29 @@ Builders retain historical `UNVALIDATED` filenames and conservative
 `ready_to_flash: false` metadata: building a file cannot certify a connected
 monitor. The device result above is separate evidence. No offsets or acceptance
 claims should be generalized to another model or firmware version.
+
+
+## Coordinated KVM programming result (2026-10-30)
+
+One M28U completed the coordinated KVM + SDR-cap540 + standby flash from macOS:
+
+- Exact target/readback SHA-256:
+  `be7c06f2399f57060f86e53828c6ee079141551ea48b1e2f982f8465689cc5ef`.
+- Total runner duration: 1716.28 seconds (28 minutes 36 seconds).
+- 27 image banks byte-verified, then marker committed and bank32 verified again
+  (28 bank-verification events). Saved full-image readback equals the target.
+- Original protection restored; commit complete; no held ISP state.
+- Reset transfer reported an error while USB re-enumerated. A fresh connection
+  then confirmed normal mode, source3 and F11; the runner exited successfully.
+- Prior read-only preflight recognized the exact installed SDR-cap540 bank pair,
+  stock bank16, C84016 and stable FC/00/00 status.
+
+This establishes programming and protocol-level normal startup on one unit.
+The user confirmed that picture and monitor-connected keyboard/mouse returned
+automatically without a manual power cycle. The owner later reported "seems to
+have worked". This is a tentative observation; detailed source-loss/standby
+switching acceptance remains unverified. No OSD candidate installation was
+verified in that report, and no general KVM fix or failed-boot recovery claim
+follows from this result.
+Private original captures, journals and readback remain excluded from Git.
+The detailed candidate and test boundaries are in [kvm-experiment.md](kvm-experiment.md).

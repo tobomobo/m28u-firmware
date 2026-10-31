@@ -21,9 +21,11 @@ is needed. Firmware downloads and device captures are not distributed here.
 Both patches were flashed on one M28U. On 2026-10-30, the complete SDR image
 readback matched its target, and picture/keyboard/mouse returned automatically.
 The owner tentatively reported brighter SDR at 100%. The session took **28m17s**.
-KVM behaviour with a disconnected host remains unresolved. An
-[offline KVM experiment](docs/kvm-experiment.md) now tests a possible no-signal
-button path; its image is not accepted by the writer.
+The [coordinated KVM image](docs/kvm-experiment.md) was subsequently flashed
+with exact readback and automatic picture/peripheral return. The owner later
+tentatively reported success; detailed source-loss/standby switching acceptance
+remains unverified. The separate [no-signal OSD candidate](docs/osd-experiment.md)
+is prepared and tested offline only. It has not been flashed.
 
 **Flashing can leave the monitor unusable.** Failed-boot recovery over USB and
 long-term electrical/thermal reliability have not been established. Backups

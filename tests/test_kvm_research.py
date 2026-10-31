@@ -8,6 +8,8 @@ from unittest.mock import patch
 from m28u_toolkit.images import IMAGE_SIZE, SDR_CAP540_SHA256, read_sdr_cap540
 from m28u_toolkit.writer import run
 from tools.build_kvm_experiment import HOOK, STUB, build, stub_bytes
+from tools.build_kvm_experiment import (COORDINATED_HOOK, COORDINATED_STUB,
+                                       build_coordinated, coordinated_stub_bytes)
 from tools.build_sdr_experiment import build as build_sdr
 from writer_model import FixedRegisterReadModel
 
@@ -42,11 +44,33 @@ class KvmResearchTests(unittest.TestCase):
             with self.subTest(address=address), self.assertRaises(ValueError):
                 build(bytes(altered))
 
-    def test_research_image_refused_before_live_transport_open(self):
+    def test_coordinated_candidate_is_separate_and_bounded(self):
+        target, report = build_coordinated(self.stock)
+        allowed = set(range(COORDINATED_HOOK, COORDINATED_HOOK+3)) | set(
+            range(COORDINATED_STUB, COORDINATED_STUB+len(coordinated_stub_bytes())))
+        changed = {i for i, (a, b) in enumerate(zip(self.base, target)) if a != b}
+        self.assertTrue(changed and changed <= allowed)
+        self.assertEqual(target[HOOK:HOOK+3], self.base[HOOK:HOOK+3])
+        self.assertEqual(target[STUB:STUB+len(stub_bytes())], self.base[STUB:STUB+len(stub_bytes())])
+        self.assertEqual(target[0xf8fe:0xf900], b"\xaa\x55")
+        self.assertEqual(target[COORDINATED_HOOK:COORDINATED_HOOK+3], bytes.fromhex("02 ff 00"))
+        self.assertEqual(hashlib.sha256(target).hexdigest(), report["candidate_sha256"])
+        self.assertFalse(report["ready_to_flash"])
+        self.assertTrue(report["writer_accepts_target"])
+        for data in (self.base, self.target, target, self.stock[:-1], bytes(IMAGE_SIZE)):
+            with self.subTest(size=len(data)), self.assertRaises(ValueError):
+                build_coordinated(data)
+
+    def test_kvm_images_refused_by_sdr_selector_before_live_transport_open(self):
+        for target in (self.target, build_coordinated(self.stock)[0]):
+            with self.subTest(sha256=hashlib.sha256(target).hexdigest()):
+                self._assert_writer_refuses(target)
+
+    def _assert_writer_refuses(self, target):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
             candidate = folder / "research.bin"
-            candidate.write_bytes(self.target)
+            candidate.write_bytes(target)
             with self.assertRaisesRegex(ValueError, "pinned research SHA-256"):
                 read_sdr_cap540(candidate, self.stock)
             backup = FixedRegisterReadModel(self.stock).chip.initial
