@@ -9,8 +9,10 @@ import os
 from pathlib import Path
 import time
 
-from .images import (IMAGE_SIZE, SDR_CAP540_BANK20_SHA256, crc8, identify_stock,
-                     make_candidate, read_exact_file, read_sdr_cap540, sha256)
+from .images import (IMAGE_SIZE, SDR_CAP540_BANK20_SHA256, KVM_COORDINATED_BANK19_SHA256,
+                     OSD_NO_SIGNAL_BANK19_SHA256,
+                     crc8, identify_stock, make_candidate, read_exact_file,
+                     read_sdr_cap540, read_kvm_coordinated, read_osd_no_signal, sha256)
 from .preflight import CAPACITY, UPDATE_BASE, sector_plan
 from .scaler import SpiReader, _private_json
 from .update_sim import SETUP
@@ -85,22 +87,31 @@ class FlashReader(SpiReader):
         return first
 
 
-def load_job(first_path, second_path, stock_path, candidate, *, sdr_cap540=None):
+def load_job(first_path, second_path, stock_path, candidate, *, sdr_cap540=None, kvm_coordinated=None,
+             osd_no_signal=None):
     if type(candidate) is not bool:
         raise ValueError("Candidate choice must be boolean")
-    if sdr_cap540 is not None and not candidate:
-        raise ValueError("Stock-only and SDR cap540 choices are mutually exclusive")
+    selections = sum(value is not None for value in (sdr_cap540, kvm_coordinated, osd_no_signal))
+    if selections > 1 or selections and not candidate:
+        raise ValueError("Stock-only, SDR cap540, coordinated KVM and no-signal OSD choices are mutually exclusive")
     first, second = (read_exact_file(p, CAPACITY) for p in (first_path, second_path))
     stock = read_exact_file(stock_path, IMAGE_SIZE)
     sector_plan(first, second, stock)
-    target = (read_sdr_cap540(sdr_cap540, stock) if sdr_cap540 is not None else
+    target = (read_osd_no_signal(osd_no_signal, stock) if osd_no_signal is not None else
+              read_kvm_coordinated(kvm_coordinated, stock) if kvm_coordinated is not None else
+              read_sdr_cap540(sdr_cap540, stock) if sdr_cap540 is not None else
               make_candidate(stock)[0] if candidate else stock)
-    target_name = "sdr-cap540" if sdr_cap540 is not None else "standby" if candidate else "stock"
+    target_name = ("osd-no-signal" if osd_no_signal is not None else
+                   "kvm-coordinated" if kvm_coordinated is not None else
+                   "sdr-cap540" if sdr_cap540 is not None else
+                   "standby" if candidate else "stock")
     expected = first[:UPDATE_BASE] + target + first[UPDATE_BASE + IMAGE_SIZE:]
     return first, stock, target, {"backup_sha256": hashlib.sha256(first).hexdigest(),
         "target_sha256": hashlib.sha256(target).hexdigest(), "candidate": candidate,
         "target_name": target_name,
         "sdr_hardware_validated": False,
+        "kvm_hardware_validated": False,
+        "osd_hardware_validated": False,
         "expected_main_array_sha256": hashlib.sha256(expected).hexdigest(),
         "write_region": [UPDATE_BASE, UPDATE_BASE + IMAGE_SIZE],
         "marker_commit": "AA55 programmed only after all image bytes except marker have passed byte-for-byte readback",
@@ -121,23 +132,30 @@ def preflight(bus, backup, stock, *, candidate_bank=None, clock=time.monotonic, 
     mode_before = bus.read(0x6f)[0]
     # Read both changed banks. Separate allowlists could accept a hybrid image
     # (SDR code with the stock standby bank), so recognize the pair as a unit.
-    progress("Read-only preflight: comparing both 64 KiB patch banks and saved-array samples")
+    progress("Read-only preflight: comparing banks 16/19/20 and saved-array samples")
+    # The superseded KVM experiment changed bank16. It must never be
+    # mistaken for the supported SDR or coordinated images on rollback.
+    if b"".join(reader.stream(0x300000, 65536)) != stock[0x100000:0x110000]:
+        raise ValueError("Live bank 16 is not a recognized F11 image")
     address = 0x330000
     started = clock()
     live = b"".join(reader.stream(address, 65536))
     elapsed = clock() - started
-    matches = "stock" if live == backup[address:address + 65536] else "candidate" if candidate_bank is not None and live == candidate_bank else None
+    matches = ("stock" if live == backup[address:address + 65536] else
+               "candidate" if candidate_bank is not None and live == candidate_bank else
+               "kvm-coordinated" if sha256(live) == KVM_COORDINATED_BANK19_SHA256 else
+               "osd-no-signal" if sha256(live) == OSD_NO_SIGNAL_BANK19_SHA256 else None)
     if matches is None:
         raise ValueError("Live patch bank differs from the verified backup")
     sdr_address = 0x340000
     started = clock()
     live_sdr = b"".join(reader.stream(sdr_address, 65536))
     sdr_elapsed = clock() - started
-    if live_sdr == stock[0x140000:0x150000]:
+    if matches in ("stock", "candidate") and live_sdr == stock[0x140000:0x150000]:
         installed = "stock" if matches == "stock" else "standby"
-    elif (matches == "candidate" and
+    elif (matches in ("candidate", "kvm-coordinated", "osd-no-signal") and
           sha256(live_sdr) == SDR_CAP540_BANK20_SHA256):
-        installed = "sdr-cap540"
+        installed = matches if matches != "candidate" else "sdr-cap540"
     else:
         raise ValueError("Live SDR bank or installed bank pair is not a recognized F11 image")
     points = [0, 0x123, 0xaff00, 0x1f0000, MARKER, 0x200000, 0x2a9e80,
@@ -149,10 +167,10 @@ def preflight(bus, backup, stock, *, candidate_bank=None, clock=time.monotonic, 
                     "patch_bank_exact": True, "patch_bank_matches": matches, "saved_array_samples": len(points),
                     "isp_mode_raw": mode_before, "patch_bank_read_seconds": elapsed,
                     "patch_bank_read_kib_per_second": 64 / elapsed if elapsed > 0 else None,
-                    "sdr_bank_exact": True, "installed_image": installed,
+                    "legacy_kvm_bank16_exact": True, "sdr_bank_exact": True, "installed_image": installed,
                     "sdr_bank_read_seconds": sdr_elapsed,
                     "sdr_bank_sha256": sha256(live_sdr),
-                    "identity_scope": "Complete banks 19/20 and ten array samples; not a full live image capture",
+                    "identity_scope": "Complete banks 16/19/20 and ten array samples; not a full live image capture",
                     "flash_write_sent": False}
 
 
@@ -314,12 +332,14 @@ class Programmer:
 
 
 def run(first_path, second_path, stock_path, output_directory, *, live=False, program=False,
-        candidate=True, sdr_cap540=None, device=None, progress=lambda s: None):
+        candidate=True, sdr_cap540=None, kvm_coordinated=None, osd_no_signal=None,
+        device=None, progress=lambda s: None):
     """No transport import/open until all local inputs and explicit flags pass."""
     if type(live) is not bool or type(program) is not bool:
         raise ValueError("Live/program choices must be boolean")
     backup, stock, target, job = load_job(first_path, second_path, stock_path, candidate,
-                                        sdr_cap540=sdr_cap540)
+                                        sdr_cap540=sdr_cap540, kvm_coordinated=kvm_coordinated,
+                                        osd_no_signal=osd_no_signal)
     if not live:
         return {**job, "hardware_access": False, "flash_write_sent": False,
                 "message": "Offline job only; --live preflights, --live --program permits the update"}
